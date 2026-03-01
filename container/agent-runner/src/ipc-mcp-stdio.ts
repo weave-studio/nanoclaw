@@ -91,6 +91,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
     schedule_value: z.string().describe('cron: "*/5 * * * *" | interval: milliseconds like "300000" | once: local timestamp like "2026-02-01T15:30:00" (no Z suffix!)'),
     context_mode: z.enum(['group', 'isolated']).default('group').describe('group=runs with chat history and memory, isolated=fresh session (include context in prompt)'),
     target_group_jid: z.string().optional().describe('(Main group only) JID of the group to schedule the task for. Defaults to the current group.'),
+    model: z.string().optional().describe('Claude model to use for this task (e.g., "claude-haiku-4-5-20251001", "claude-sonnet-4-6"). Defaults to group or global model.'),
   },
   async (args) => {
     // Validate schedule_value before writing IPC
@@ -137,6 +138,7 @@ SCHEDULE VALUE FORMAT (all times are LOCAL timezone):
       schedule_value: args.schedule_value,
       context_mode: args.context_mode || 'group',
       targetJid,
+      model: args.model,
       createdBy: groupFolder,
       timestamp: new Date().toISOString(),
     };

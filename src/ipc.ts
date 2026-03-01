@@ -160,6 +160,7 @@ export async function processTaskIpc(
     schedule_type?: string;
     schedule_value?: string;
     context_mode?: string;
+    model?: string;
     groupFolder?: string;
     chatJid?: string;
     targetJid?: string;
@@ -262,6 +263,7 @@ export async function processTaskIpc(
           next_run: nextRun,
           status: 'active',
           created_at: new Date().toISOString(),
+          model: data.model,
         });
         logger.info(
           { taskId, sourceGroup, targetFolder, contextMode },
