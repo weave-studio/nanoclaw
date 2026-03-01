@@ -1,0 +1,33 @@
+[Unit]
+Description=NanoClaw AI Assistant (Rootless Podman)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10
+WorkingDirectory=%h/nanoclaw
+
+# Run NanoClaw via npm (not inside a container — NanoClaw spawns its own containers)
+ExecStart=/usr/bin/node %h/nanoclaw/dist/index.js
+ExecStop=/bin/kill -SIGTERM $MAINPID
+
+# Environment
+Environment=NODE_ENV=production
+EnvironmentFile=%h/nanoclaw/.env
+
+# Security: restrict what the host process can do
+NoNewPrivileges=true
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=%h/nanoclaw/groups %h/nanoclaw/store %h/nanoclaw/data %h/nanoclaw/logs
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nanoclaw
+
+[Install]
+WantedBy=default.target
