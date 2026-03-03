@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   _initTestDatabase,
   createTask,
+  getAllRegisteredGroups,
   getAllTasks,
   getRegisteredGroup,
   getTaskById,
@@ -61,6 +62,9 @@ beforeEach(() => {
     syncGroupMetadata: async () => {},
     getAvailableGroups: () => [],
     writeGroupsSnapshot: () => {},
+    refreshGroups: () => {
+      Object.assign(groups, getAllRegisteredGroups());
+    },
   };
 });
 

@@ -10,7 +10,14 @@ import {
   TIMEZONE,
 } from './config.js';
 import { AvailableGroup } from './container-runner.js';
-import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
+import {
+  createTask,
+  deleteTask,
+  getRegisteredGroup,
+  getTaskById,
+  setRegisteredGroup,
+  updateTask,
+} from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
@@ -27,6 +34,7 @@ export interface IpcDeps {
     availableGroups: AvailableGroup[],
     registeredJids: Set<string>,
   ) => void;
+  refreshGroups: () => void;
 }
 
 let ipcWatcherRunning = false;
@@ -382,6 +390,46 @@ export async function processTaskIpc(
         );
       }
       break;
+
+    case 'set_model': {
+      // Any group can change its own model
+      const targetJid = data.chatJid;
+      if (!targetJid) {
+        logger.warn({ sourceGroup }, 'set_model missing chatJid');
+        break;
+      }
+
+      const group = getRegisteredGroup(targetJid);
+      if (!group) {
+        logger.warn({ targetJid, sourceGroup }, 'set_model: group not found');
+        break;
+      }
+
+      // Authorization: non-main groups can only change their own model
+      if (!isMain && group.folder !== sourceGroup) {
+        logger.warn(
+          { sourceGroup, targetFolder: group.folder },
+          'Unauthorized set_model attempt blocked',
+        );
+        break;
+      }
+
+      const newModel = data.model || undefined;
+      const updatedGroup: RegisteredGroup = {
+        ...group,
+        containerConfig: {
+          ...group.containerConfig,
+          model: newModel,
+        },
+      };
+      setRegisteredGroup(targetJid, updatedGroup);
+      deps.refreshGroups();
+      logger.info(
+        { sourceGroup, targetJid, model: newModel ?? 'default' },
+        'Group model updated via IPC',
+      );
+      break;
+    }
 
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');
