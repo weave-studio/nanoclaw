@@ -1,7 +1,6 @@
 ---
 name: set-model
 description: Switch the Claude model used for this group's conversations. Use when the user asks to change models (e.g., "use Opus", "switch to Haiku", "use Sonnet").
-allowed-tools: Bash(set-model:*)
 ---
 
 # Switch Claude Model
