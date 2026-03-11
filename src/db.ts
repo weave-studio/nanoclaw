@@ -513,6 +513,10 @@ export function logTaskRun(log: TaskRunLog): void {
   );
 }
 
+export function deleteSession(groupFolder: string): void {
+  db.prepare('DELETE FROM sessions WHERE group_folder = ?').run(groupFolder);
+}
+
 // --- Router state accessors ---
 
 export function getRouterState(key: string): string | undefined {

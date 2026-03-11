@@ -27,6 +27,7 @@ import {
   PROXY_BIND_HOST,
 } from './container-runtime.js';
 import {
+  deleteSession,
   getAllChats,
   getAllRegisteredGroups,
   getAllSessions,
@@ -257,7 +258,49 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     return false;
   }
 
+  checkCompactionFlag(group.folder);
   return true;
+}
+
+/**
+ * Auto-compact: if the agent set a .compact_needed flag and MEMORY.md
+ * was recently updated (confirming memory flush), delete the session
+ * so the next run starts fresh.
+ */
+function checkCompactionFlag(groupFolder: string): void {
+  const groupDir = resolveGroupFolderPath(groupFolder);
+  const flagPath = path.join(groupDir, '.compact_needed');
+
+  if (!fs.existsSync(flagPath)) return;
+
+  const memoryPath = path.join(groupDir, 'MEMORY.md');
+  const memoryExists = fs.existsSync(memoryPath);
+
+  if (memoryExists) {
+    const memoryStat = fs.statSync(memoryPath);
+    const flagStat = fs.statSync(flagPath);
+    // Memory must be updated after (or at same time as) the flag
+    if (memoryStat.mtimeMs >= flagStat.mtimeMs) {
+      delete sessions[groupFolder];
+      deleteSession(groupFolder);
+      logger.info(
+        { groupFolder },
+        'Auto-compact: session deleted after memory flush',
+      );
+    } else {
+      logger.warn(
+        { groupFolder },
+        'Auto-compact: flag set but MEMORY.md not updated, skipping',
+      );
+    }
+  }
+
+  // Remove the flag regardless
+  try {
+    fs.unlinkSync(flagPath);
+  } catch {
+    /* ignore */
+  }
 }
 
 async function runAgent(
