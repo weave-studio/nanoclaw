@@ -263,6 +263,16 @@ export function startSchedulerLoop(deps: SchedulerDependencies): void {
           continue;
         }
 
+        // Advance next_run BEFORE enqueuing to prevent double-fire:
+        // without this, the next poll finds the task still due and enqueues again.
+        const nextRun = computeNextRun(currentTask);
+        if (nextRun) {
+          updateTask(currentTask.id, { next_run: nextRun });
+        } else {
+          // One-shot task: mark completed so it's not re-picked
+          updateTask(currentTask.id, { status: 'completed' });
+        }
+
         deps.queue.enqueueTask(currentTask.chat_jid, currentTask.id, () =>
           runTask(currentTask, deps),
         );
