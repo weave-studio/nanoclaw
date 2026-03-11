@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   _initTestDatabase,
   createTask,
+  getAllRegisteredGroups,
   getAllTasks,
   getRegisteredGroup,
   getTaskById,
@@ -58,6 +59,9 @@ beforeEach(() => {
       groups[jid] = group;
       setRegisteredGroup(jid, group);
       // Mock the fs.mkdirSync that registerGroup does
+    },
+    refreshGroups: () => {
+      groups = getAllRegisteredGroups();
     },
     syncGroups: async () => {},
     getAvailableGroups: () => [],

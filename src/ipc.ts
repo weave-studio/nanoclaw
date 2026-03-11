@@ -14,6 +14,7 @@ export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
   registeredGroups: () => Record<string, RegisteredGroup>;
   registerGroup: (jid: string, group: RegisteredGroup) => void;
+  refreshGroups: () => void;
   syncGroups: (force: boolean) => Promise<void>;
   getAvailableGroups: () => AvailableGroup[];
   writeGroupsSnapshot: (
@@ -450,6 +451,33 @@ export async function processTaskIpc(
         );
       }
       break;
+
+    case 'set_model': {
+      // Find the group entry by folder to update its containerConfig.model
+      const groups = deps.registeredGroups();
+      const entry = Object.entries(groups).find(
+        ([, g]) => g.folder === sourceGroup,
+      );
+      if (!entry) {
+        logger.warn({ sourceGroup }, 'set_model: group not found');
+        break;
+      }
+      const [jid, group] = entry;
+      const model = (data as { model?: string | null }).model || undefined;
+      deps.registerGroup(jid, {
+        ...group,
+        containerConfig: {
+          ...group.containerConfig,
+          model,
+        },
+      });
+      deps.refreshGroups();
+      logger.info(
+        { sourceGroup, model: model || 'default' },
+        'Model updated via IPC',
+      );
+      break;
+    }
 
     default:
       logger.warn({ type: data.type }, 'Unknown IPC task type');

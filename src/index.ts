@@ -566,6 +566,9 @@ async function main(): Promise<void> {
     },
     registeredGroups: () => registeredGroups,
     registerGroup,
+    refreshGroups: () => {
+      registeredGroups = getAllRegisteredGroups();
+    },
     syncGroups: async (force: boolean) => {
       await Promise.all(
         channels
