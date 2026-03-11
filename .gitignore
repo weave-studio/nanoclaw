@@ -22,6 +22,11 @@ groups/global/*
 *.keys.json
 .env
 
+# Personality (instance-specific, generated from templates)
+SOUL.md
+IDENTITY.md
+USER.md
+
 # Temp files
 .tmp-*
 
