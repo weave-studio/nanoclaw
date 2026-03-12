@@ -123,6 +123,8 @@ function buildVolumeMounts(
     '.claude',
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
+  // SDK writes debug logs here; create upfront so it inherits the writable mount
+  fs.mkdirSync(path.join(groupSessionsDir, 'debug'), { recursive: true });
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
   if (!fs.existsSync(settingsFile)) {
     fs.writeFileSync(
