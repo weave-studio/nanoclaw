@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 
+import { CREDENTIAL_PROXY_MODE } from './config.js';
 import { logger } from './logger.js';
 
 /** The container runtime binary name. */
@@ -38,6 +39,34 @@ function detectProxyBindHost(): string {
     if (ipv4) return ipv4.address;
   }
   return '0.0.0.0';
+}
+
+/** Docker network name for sidecar proxy mode. */
+export const PROXY_NETWORK = 'nanoclaw-net';
+
+/** Container name for the sidecar proxy. */
+export const PROXY_CONTAINER_NAME = 'nanoclaw-proxy';
+
+/** Detect if Docker is running in rootless mode. */
+const IS_ROOTLESS_DOCKER: boolean = (() => {
+  if (os.platform() !== 'linux') return false;
+  try {
+    const info = execSync(
+      'docker info --format "{{.SecurityOptions}}"',
+      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8', timeout: 5000 },
+    );
+    return info.includes('rootless');
+  } catch {
+    return false;
+  }
+})();
+
+/** Whether to run the credential proxy as a sidecar container. */
+export function useSidecarProxy(): boolean {
+  if (CREDENTIAL_PROXY_MODE === 'host') return false;
+  if (CREDENTIAL_PROXY_MODE === 'sidecar') return true;
+  // auto: sidecar on rootless Linux, host everywhere else
+  return IS_ROOTLESS_DOCKER;
 }
 
 /** CLI args needed for the container to resolve the host gateway. */
@@ -107,7 +136,9 @@ export function cleanupOrphans(): void {
       `${CONTAINER_RUNTIME_BIN} ps --filter name=nanoclaw- --format '{{.Names}}'`,
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' },
     );
-    const orphans = output.trim().split('\n').filter(Boolean);
+    const orphans = output.trim().split('\n').filter(
+      (name) => name && name !== PROXY_CONTAINER_NAME,
+    );
     for (const name of orphans) {
       try {
         execSync(stopContainer(name), { stdio: 'pipe' });

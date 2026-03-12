@@ -21,9 +21,12 @@ import { logger } from './logger.js';
 import {
   CONTAINER_HOST_GATEWAY,
   CONTAINER_RUNTIME_BIN,
+  PROXY_CONTAINER_NAME,
+  PROXY_NETWORK,
   hostGatewayArgs,
   readonlyMountArgs,
   stopContainer,
+  useSidecarProxy,
 } from './container-runtime.js';
 import { detectAuthMode } from './credential-proxy.js';
 import { validateAdditionalMounts } from './mount-security.js';
@@ -225,9 +228,13 @@ function buildContainerArgs(
   args.push('-e', `TZ=${TIMEZONE}`);
 
   // Route API traffic through the credential proxy (containers never see real secrets)
+  const sidecar = useSidecarProxy();
+  const proxyHost = sidecar
+    ? PROXY_CONTAINER_NAME  // Reachable by container name on shared Docker network
+    : CONTAINER_HOST_GATEWAY;
   args.push(
     '-e',
-    `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
+    `ANTHROPIC_BASE_URL=http://${proxyHost}:${CREDENTIAL_PROXY_PORT}`,
   );
 
   // Mirror the host's auth method with a placeholder value.
@@ -241,8 +248,13 @@ function buildContainerArgs(
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
   }
 
-  // Runtime-specific args for host gateway resolution
-  args.push(...hostGatewayArgs());
+  if (sidecar) {
+    // Join the shared network so the agent can reach the proxy by name
+    args.push('--network', PROXY_NETWORK);
+  } else {
+    // Runtime-specific args for host gateway resolution
+    args.push(...hostGatewayArgs());
+  }
 
   // Run as host user so bind-mounted files are accessible.
   // Skip when running as root (uid 0), as the container's node user (uid 1000),

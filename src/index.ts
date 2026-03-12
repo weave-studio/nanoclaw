@@ -10,6 +10,11 @@ import {
   TRIGGER_PATTERN,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
+import {
+  ensureProxyNetwork,
+  startProxySidecar,
+  stopProxySidecar,
+} from './credential-proxy-sidecar.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -25,6 +30,7 @@ import {
   cleanupOrphans,
   ensureContainerRuntimeRunning,
   PROXY_BIND_HOST,
+  useSidecarProxy,
 } from './container-runtime.js';
 import {
   deleteSession,
@@ -515,16 +521,29 @@ async function main(): Promise<void> {
   logger.info('Database initialized');
   loadState();
 
-  // Start credential proxy (containers route API calls through this)
-  const proxyServer = await startCredentialProxy(
-    CREDENTIAL_PROXY_PORT,
-    PROXY_BIND_HOST,
-  );
+  // Start credential proxy (containers route API calls through this).
+  // Sidecar mode: proxy runs as a Docker container on a shared network
+  // (solves rootless Docker namespace isolation). Host mode: in-process.
+  let proxyServer: import('http').Server | null = null;
+  if (useSidecarProxy()) {
+    ensureProxyNetwork();
+    startProxySidecar(CREDENTIAL_PROXY_PORT);
+    logger.info('Credential proxy running as sidecar container');
+  } else {
+    proxyServer = await startCredentialProxy(
+      CREDENTIAL_PROXY_PORT,
+      PROXY_BIND_HOST,
+    );
+  }
 
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
-    proxyServer.close();
+    if (proxyServer) {
+      proxyServer.close();
+    } else {
+      stopProxySidecar();
+    }
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);
