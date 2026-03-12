@@ -21,6 +21,7 @@ import { logger } from './logger.js';
 import {
   CONTAINER_HOST_GATEWAY,
   CONTAINER_RUNTIME_BIN,
+  IS_ROOTLESS_DOCKER,
   PROXY_CONTAINER_NAME,
   PROXY_NETWORK,
   hostGatewayArgs,
@@ -230,7 +231,7 @@ function buildContainerArgs(
   // Route API traffic through the credential proxy (containers never see real secrets)
   const sidecar = useSidecarProxy();
   const proxyHost = sidecar
-    ? PROXY_CONTAINER_NAME  // Reachable by container name on shared Docker network
+    ? PROXY_CONTAINER_NAME // Reachable by container name on shared Docker network
     : CONTAINER_HOST_GATEWAY;
   args.push(
     '-e',
@@ -257,11 +258,14 @@ function buildContainerArgs(
   }
 
   // Run as host user so bind-mounted files are accessible.
-  // Skip when running as root (uid 0), as the container's node user (uid 1000),
-  // or when getuid is unavailable (native Windows without WSL).
   const hostUid = process.getuid?.();
   const hostGid = process.getgid?.();
-  if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
+  if (IS_ROOTLESS_DOCKER) {
+    // Rootless Docker: UID 0 in container = host user (nanoclaw).
+    // Any other UID maps through subuid offset and can't access bind mounts.
+    args.push('--user', '0:0');
+    args.push('-e', 'HOME=/home/node');
+  } else if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
     args.push('--user', `${hostUid}:${hostGid}`);
     args.push('-e', 'HOME=/home/node');
   }

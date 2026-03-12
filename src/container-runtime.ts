@@ -48,13 +48,14 @@ export const PROXY_NETWORK = 'nanoclaw-net';
 export const PROXY_CONTAINER_NAME = 'nanoclaw-proxy';
 
 /** Detect if Docker is running in rootless mode. */
-const IS_ROOTLESS_DOCKER: boolean = (() => {
+export const IS_ROOTLESS_DOCKER: boolean = (() => {
   if (os.platform() !== 'linux') return false;
   try {
-    const info = execSync(
-      'docker info --format "{{.SecurityOptions}}"',
-      { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8', timeout: 5000 },
-    );
+    const info = execSync('docker info --format "{{.SecurityOptions}}"', {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      encoding: 'utf-8',
+      timeout: 5000,
+    });
     return info.includes('rootless');
   } catch {
     return false;
@@ -136,9 +137,10 @@ export function cleanupOrphans(): void {
       `${CONTAINER_RUNTIME_BIN} ps --filter name=nanoclaw- --format '{{.Names}}'`,
       { stdio: ['pipe', 'pipe', 'pipe'], encoding: 'utf-8' },
     );
-    const orphans = output.trim().split('\n').filter(
-      (name) => name && name !== PROXY_CONTAINER_NAME,
-    );
+    const orphans = output
+      .trim()
+      .split('\n')
+      .filter((name) => name && name !== PROXY_CONTAINER_NAME);
     for (const name of orphans) {
       try {
         execSync(stopContainer(name), { stdio: 'pipe' });
