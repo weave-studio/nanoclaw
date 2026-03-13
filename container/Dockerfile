@@ -30,8 +30,8 @@ RUN apt-get update && apt-get install -y \
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+# Install agent-browser globally (claude CLI comes from the SDK — see symlink below)
+RUN npm install -g agent-browser
 
 # Create app directory
 WORKDIR /app
@@ -47,6 +47,9 @@ COPY agent-runner/ ./
 
 # Build TypeScript
 RUN npm run build
+
+# Symlink SDK's bundled CLI into PATH so `claude` always matches the SDK version
+RUN ln -s /app/node_modules/@anthropic-ai/claude-agent-sdk/cli.js /usr/local/bin/claude
 
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input
