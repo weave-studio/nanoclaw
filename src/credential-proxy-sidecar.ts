@@ -18,16 +18,16 @@ import { logger } from './logger.js';
 /** Create the shared Docker network if it doesn't exist. */
 export function ensureProxyNetwork(): void {
   try {
-    execSync(
-      `${CONTAINER_RUNTIME_BIN} network inspect ${PROXY_NETWORK}`,
-      { stdio: 'pipe', timeout: 10000 },
-    );
+    execSync(`${CONTAINER_RUNTIME_BIN} network inspect ${PROXY_NETWORK}`, {
+      stdio: 'pipe',
+      timeout: 10000,
+    });
     logger.debug({ network: PROXY_NETWORK }, 'Proxy network already exists');
   } catch {
-    execSync(
-      `${CONTAINER_RUNTIME_BIN} network create ${PROXY_NETWORK}`,
-      { stdio: 'pipe', timeout: 10000 },
-    );
+    execSync(`${CONTAINER_RUNTIME_BIN} network create ${PROXY_NETWORK}`, {
+      stdio: 'pipe',
+      timeout: 10000,
+    });
     logger.info({ network: PROXY_NETWORK }, 'Created proxy network');
   }
 }
@@ -36,10 +36,10 @@ export function ensureProxyNetwork(): void {
 export function startProxySidecar(port: number = CREDENTIAL_PROXY_PORT): void {
   // Stop any existing proxy container (idempotent)
   try {
-    execSync(
-      `${CONTAINER_RUNTIME_BIN} rm -f ${PROXY_CONTAINER_NAME}`,
-      { stdio: 'pipe', timeout: 10000 },
-    );
+    execSync(`${CONTAINER_RUNTIME_BIN} rm -f ${PROXY_CONTAINER_NAME}`, {
+      stdio: 'pipe',
+      timeout: 10000,
+    });
   } catch {
     /* didn't exist */
   }
@@ -50,20 +50,29 @@ export function startProxySidecar(port: number = CREDENTIAL_PROXY_PORT): void {
   const envFile = path.join(projectRoot, '.env');
 
   const args = [
-    'run', '-d',
-    '--name', PROXY_CONTAINER_NAME,
-    '--network', PROXY_NETWORK,
-    '--restart', 'unless-stopped',
+    'run',
+    '-d',
+    '--name',
+    PROXY_CONTAINER_NAME,
+    '--network',
+    PROXY_NETWORK,
+    '--restart',
+    'unless-stopped',
     // Mount compiled JS and dependencies (read-only)
-    '-v', `${distDir}:/app/dist:ro`,
-    '-v', `${nodeModules}:/app/node_modules:ro`,
+    '-v',
+    `${distDir}:/app/dist:ro`,
+    '-v',
+    `${nodeModules}:/app/node_modules:ro`,
     // Mount .env into /config/ so the standalone entry point can read it
-    '-v', `${envFile}:/config/.env:ro`,
+    '-v',
+    `${envFile}:/config/.env:ro`,
     // Pass the port
-    '-e', `CREDENTIAL_PROXY_PORT=${port}`,
+    '-e',
+    `CREDENTIAL_PROXY_PORT=${port}`,
     // Use the same Node.js image the agent container is based on
     'node:22-slim',
-    'node', '/app/dist/credential-proxy-standalone.js',
+    'node',
+    '/app/dist/credential-proxy-standalone.js',
   ];
 
   const cmd = `${CONTAINER_RUNTIME_BIN} ${args.map((a) => `'${a}'`).join(' ')}`;
@@ -111,20 +120,20 @@ export function startProxySidecar(port: number = CREDENTIAL_PROXY_PORT): void {
 /** Stop and remove the sidecar proxy container and network. */
 export function stopProxySidecar(): void {
   try {
-    execSync(
-      `${CONTAINER_RUNTIME_BIN} rm -f ${PROXY_CONTAINER_NAME}`,
-      { stdio: 'pipe', timeout: 10000 },
-    );
+    execSync(`${CONTAINER_RUNTIME_BIN} rm -f ${PROXY_CONTAINER_NAME}`, {
+      stdio: 'pipe',
+      timeout: 10000,
+    });
     logger.info('Proxy sidecar stopped');
   } catch {
     /* already gone */
   }
 
   try {
-    execSync(
-      `${CONTAINER_RUNTIME_BIN} network rm ${PROXY_NETWORK}`,
-      { stdio: 'pipe', timeout: 10000 },
-    );
+    execSync(`${CONTAINER_RUNTIME_BIN} network rm ${PROXY_NETWORK}`, {
+      stdio: 'pipe',
+      timeout: 10000,
+    });
     logger.debug('Proxy network removed');
   } catch {
     /* in use or already gone */
