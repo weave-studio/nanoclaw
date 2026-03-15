@@ -603,9 +603,14 @@ async function main(): Promise<void> {
   const channelOpts = {
     onMessage: (chatJid: string, msg: NewMessage) => {
       // Remote control commands — intercept before storage
+      // Strip trigger prefix (e.g. "@Dexter ") since some channels always prepend it
       const trimmed = msg.content.trim();
-      if (trimmed === '/remote-control' || trimmed === '/remote-control-end') {
-        handleRemoteControl(trimmed, chatJid, msg).catch((err) =>
+      const withoutTrigger = trimmed.replace(TRIGGER_PATTERN, '').trim();
+      if (
+        withoutTrigger === '/remote-control' ||
+        withoutTrigger === '/remote-control-end'
+      ) {
+        handleRemoteControl(withoutTrigger, chatJid, msg).catch((err) =>
           logger.error({ err, chatJid }, 'Remote control command error'),
         );
         return;
