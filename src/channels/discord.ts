@@ -74,9 +74,7 @@ export class DiscordChannel implements Channel {
       // Also strip any <@botId> mentions to avoid visual clutter.
       if (this.client?.user) {
         const botId = this.client.user.id;
-        content = content
-          .replace(new RegExp(`<@!?${botId}>`, 'g'), '')
-          .trim();
+        content = content.replace(new RegExp(`<@!?${botId}>`, 'g'), '').trim();
       }
       if (!TRIGGER_PATTERN.test(content)) {
         content = `@${ASSISTANT_NAME} ${content}`;
@@ -88,7 +86,13 @@ export class DiscordChannel implements Channel {
         for (const att of message.attachments.values()) {
           const contentType = att.contentType || '';
           const name = att.name || 'file';
-          if (contentType.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.json') || name.endsWith('.csv')) {
+          if (
+            contentType.startsWith('text/') ||
+            name.endsWith('.txt') ||
+            name.endsWith('.md') ||
+            name.endsWith('.json') ||
+            name.endsWith('.csv')
+          ) {
             try {
               const res = await fetch(att.url);
               const text = await res.text();
