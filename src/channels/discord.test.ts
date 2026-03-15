@@ -270,7 +270,7 @@ describe('DiscordChannel', () => {
           chat_jid: 'dc:1234567890123456',
           sender: '55512345',
           sender_name: 'Alice',
-          content: 'Hello everyone',
+          content: '@Andy Hello everyone',
           is_from_me: false,
         }),
       );
@@ -445,7 +445,7 @@ describe('DiscordChannel', () => {
       );
     });
 
-    it('does not translate when bot is not mentioned', async () => {
+    it('prepends trigger even when bot is not mentioned', async () => {
       const opts = createTestOpts();
       const channel = new DiscordChannel('test-token', opts);
       await channel.connect();
@@ -459,7 +459,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: 'hello everyone',
+          content: '@Andy hello everyone',
         }),
       );
     });
@@ -506,7 +506,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: '[Image: photo.png]',
+          content: '@Andy \n[Image: photo.png]',
         }),
       );
     });
@@ -529,7 +529,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: '[Video: clip.mp4]',
+          content: '@Andy \n[Video: clip.mp4]',
         }),
       );
     });
@@ -552,7 +552,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: '[File: report.pdf]',
+          content: '@Andy \n[File: report.pdf]',
         }),
       );
     });
@@ -575,7 +575,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: 'Check this out\n[Image: photo.jpg]',
+          content: '@Andy Check this out\n[Image: photo.jpg]',
         }),
       );
     });
@@ -599,7 +599,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: '[Image: a.png]\n[File: b.txt]',
+          content: '@Andy \n[Image: a.png]\n[File: b.txt (download failed)]',
         }),
       );
     });
@@ -623,7 +623,7 @@ describe('DiscordChannel', () => {
       expect(opts.onMessage).toHaveBeenCalledWith(
         'dc:1234567890123456',
         expect.objectContaining({
-          content: '[Reply to Bob] I agree with that',
+          content: '[Reply to Bob] @Andy I agree with that',
         }),
       );
     });
