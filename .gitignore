@@ -27,6 +27,9 @@ SOUL.md
 IDENTITY.md
 USER.md
 
+# Runtime database
+*.db
+
 # Temp files
 .tmp-*
 
@@ -36,6 +39,7 @@ USER.md
 # IDE
 .idea/
 .vscode/
+.claude/settings.local.json
 
 # Skills system (local per-installation state)
 .nanoclaw/
