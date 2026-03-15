@@ -69,49 +69,48 @@ export class DiscordChannel implements Channel {
         chatName = senderName;
       }
 
-      // Translate Discord @bot mentions into TRIGGER_PATTERN format.
-      // Discord mentions look like <@botUserId> — these won't match
-      // TRIGGER_PATTERN (e.g., ^@Andy\b), so we prepend the trigger
-      // when the bot is @mentioned.
+      // Always prepend trigger for Discord messages so the agent responds
+      // without requiring @mentions — Discord groups are private (1:1 with owner).
+      // Also strip any <@botId> mentions to avoid visual clutter.
       if (this.client?.user) {
         const botId = this.client.user.id;
-        const isBotMentioned =
-          message.mentions.users.has(botId) ||
-          content.includes(`<@${botId}>`) ||
-          content.includes(`<@!${botId}>`);
-
-        if (isBotMentioned) {
-          // Strip the <@botId> mention to avoid visual clutter
-          content = content
-            .replace(new RegExp(`<@!?${botId}>`, 'g'), '')
-            .trim();
-          // Prepend trigger if not already present
-          if (!TRIGGER_PATTERN.test(content)) {
-            content = `@${ASSISTANT_NAME} ${content}`;
-          }
-        }
+        content = content
+          .replace(new RegExp(`<@!?${botId}>`, 'g'), '')
+          .trim();
+      }
+      if (!TRIGGER_PATTERN.test(content)) {
+        content = `@${ASSISTANT_NAME} ${content}`;
       }
 
-      // Handle attachments — store placeholders so the agent knows something was sent
+      // Handle attachments — download text files inline, placeholder for others
       if (message.attachments.size > 0) {
-        const attachmentDescriptions = [...message.attachments.values()].map(
-          (att) => {
-            const contentType = att.contentType || '';
-            if (contentType.startsWith('image/')) {
-              return `[Image: ${att.name || 'image'}]`;
-            } else if (contentType.startsWith('video/')) {
-              return `[Video: ${att.name || 'video'}]`;
-            } else if (contentType.startsWith('audio/')) {
-              return `[Audio: ${att.name || 'audio'}]`;
-            } else {
-              return `[File: ${att.name || 'file'}]`;
+        const parts: string[] = [];
+        for (const att of message.attachments.values()) {
+          const contentType = att.contentType || '';
+          const name = att.name || 'file';
+          if (contentType.startsWith('text/') || name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.json') || name.endsWith('.csv')) {
+            try {
+              const res = await fetch(att.url);
+              const text = await res.text();
+              parts.push(`--- ${name} ---\n${text}\n---`);
+            } catch (err) {
+              logger.warn({ err, name }, 'Failed to download text attachment');
+              parts.push(`[File: ${name} (download failed)]`);
             }
-          },
-        );
+          } else if (contentType.startsWith('image/')) {
+            parts.push(`[Image: ${name}]`);
+          } else if (contentType.startsWith('video/')) {
+            parts.push(`[Video: ${name}]`);
+          } else if (contentType.startsWith('audio/')) {
+            parts.push(`[Audio: ${name}]`);
+          } else {
+            parts.push(`[File: ${name}]`);
+          }
+        }
         if (content) {
-          content = `${content}\n${attachmentDescriptions.join('\n')}`;
+          content = `${content}\n${parts.join('\n')}`;
         } else {
-          content = attachmentDescriptions.join('\n');
+          content = parts.join('\n');
         }
       }
 

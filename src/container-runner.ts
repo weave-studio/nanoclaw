@@ -153,12 +153,23 @@ function buildVolumeMounts(
     );
   }
 
-  // Sync skills from container/skills/ into each group's .claude/skills/
-  const skillsSrc = path.join(process.cwd(), 'container', 'skills');
+  // Sync skills from container/skills/ (global) into each group's .claude/skills/
   const skillsDst = path.join(groupSessionsDir, 'skills');
-  if (fs.existsSync(skillsSrc)) {
-    for (const skillDir of fs.readdirSync(skillsSrc)) {
-      const srcDir = path.join(skillsSrc, skillDir);
+  const globalSkillsSrc = path.join(process.cwd(), 'container', 'skills');
+  if (fs.existsSync(globalSkillsSrc)) {
+    for (const skillDir of fs.readdirSync(globalSkillsSrc)) {
+      const srcDir = path.join(globalSkillsSrc, skillDir);
+      if (!fs.statSync(srcDir).isDirectory()) continue;
+      const dstDir = path.join(skillsDst, skillDir);
+      fs.cpSync(srcDir, dstDir, { recursive: true });
+    }
+  }
+
+  // Sync group-specific skills from groups/<folder>/skills/
+  const groupSkillsSrc = path.join(groupDir, 'skills');
+  if (fs.existsSync(groupSkillsSrc)) {
+    for (const skillDir of fs.readdirSync(groupSkillsSrc)) {
+      const srcDir = path.join(groupSkillsSrc, skillDir);
       if (!fs.statSync(srcDir).isDirectory()) continue;
       const dstDir = path.join(skillsDst, skillDir);
       fs.cpSync(srcDir, dstDir, { recursive: true });

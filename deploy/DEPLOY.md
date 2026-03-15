@@ -299,6 +299,37 @@ sudo systemctl status fail2ban             # active (running)
 
 ---
 
+## Deploying Code Updates
+
+When pushing code changes from your local machine to the VPS, use rsync with exclusions to avoid overwriting production secrets and runtime state:
+
+```bash
+rsync -az \
+  --exclude node_modules \
+  --exclude .git \
+  --exclude store \
+  --exclude .env \
+  --exclude data \
+  --exclude groups \
+  local/nanoclaw/ nanoclaw@<tailscale-ip>:~/nanoclaw/
+```
+
+Then restart:
+
+```bash
+ssh nanoclaw@<tailscale-ip> "systemctl --user restart nanoclaw"
+```
+
+> **CRITICAL: Always exclude `.env`**. The VPS `.env` contains `ANTHROPIC_API_KEY` which does not exist in the local copy. Overwriting it silently breaks all agent containers ("Not logged in · Please run /login"). The failure is deceptive — containers with cached sessions may keep working until the next restart, making it look like the restart or code change caused the problem.
+
+If the container image needs updating (changes to `container/agent-runner/` or `container/Dockerfile`), rebuild on the VPS:
+
+```bash
+ssh nanoclaw@<tailscale-ip> "cd ~/nanoclaw && ./container/build.sh"
+```
+
+---
+
 ## Known Issues & Fixes
 
 ### "Network is unreachable" after UFW setup
@@ -333,9 +364,14 @@ sudo systemctl status fail2ban             # active (running)
 **Cause**: NanoClaw expects `nanoclaw-agent:latest`. Manual builds with `-t nanoclaw` create a different name.
 **Fix**: Always use `./container/build.sh`. If you built manually: `docker tag nanoclaw:latest nanoclaw-agent:latest`
 
-### Agent doesn't see new tool parameters after code changes
-**Cause**: `data/sessions/main/agent-runner-src/` is volume-mounted over `/app/src`, overriding the built image code.
-**Fix**: Update files in **both** the repo AND `data/sessions/main/agent-runner-src/`, clear the session, restart service.
+### Claude Code "exited with code 1" in rootless Docker
+**Cause**: Claude Code refuses `--dangerously-skip-permissions` when running as UID 0. Rootless Docker requires `--user 0:0` (UID 0 = host user for bind mount access). The `bypassPermissions` mode triggers this rejection.
+**Fix**: Use `permissionMode: 'dontAsk'` instead of `'bypassPermissions'` in `container/agent-runner/src/index.ts`. Do NOT use `allowDangerouslySkipPermissions`.
+**Debug tip**: The SDK swallows Claude Code's stderr. To see the real error, intercept the spawn args with a `NODE_OPTIONS="--require preload.js"` script, then run the CLI command directly with `2>/tmp/stderr.log`.
+
+### Agent doesn't see code changes after editing agent-runner
+**Cause**: `data/sessions/{group}/agent-runner-src/` is volume-mounted over `/app/src`. Editing `container/agent-runner/src/` only updates the source — the mounted copy may be stale.
+**Fix**: After editing the source, also copy to the mounted path: `cp container/agent-runner/src/index.ts data/sessions/{group}/agent-runner-src/index.ts`, then restart.
 
 ### Can't make GitHub fork private
 **Cause**: GitHub doesn't allow making forks private.
